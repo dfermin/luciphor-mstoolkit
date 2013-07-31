@@ -1,0 +1,94 @@
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=windows-1252">
+<title>Compiling Luciphor-MStoolKit</title>
+<style>
+li {
+	margin: 20px;
+	line-height:25px;
+}
+p {
+	line-height:25px;
+}
+#warning {
+	color:red;
+}
+#code2 {
+	font-family:Monospace;
+	font-weight:bold;
+	font-size:120%;
+}
+#code {
+	margin: 20px, 20px;
+	padding: 2px 10px;
+	font-family:Monospace;
+	background-color:#F8F8F8;
+}
+#main {
+	margin: 40px, auto;
+	padding: 40px;
+	width: 940px;
+}
+</style>
+</head>
+
+<body>
+<div id="main">
+<h1>Compiling Luciphor with MS-ToolKit</h1>
+
+<p>This tutorial covers how to compile Luciphor on Linux using the MS-ToolKit. 
+The instructions are written assuming you are using RHEL/CENTOS 6.3 or Fedora 17.
+I don't use Ubuntu or any of the other flavors of Linux but I imagine these steps 
+are generally applicable to those distributions.
+</p>
+<ol>
+
+	<li>
+		You <b>must</b> have the C++ Boost library installed prior to compiling Luciphor.
+		Fedora/RHEL/CentOS flavors of linux usually have these installed already. 
+		But if you need to install it, issue this command <b>as root</b>:
+		<div id="code">
+			yum install boost-devel boost-filesystem boost-regex boost-static boost-system boost-thread boost
+		</div>
+
+	</li>
+	<li>
+		Download the Luciphor source code from this site: 
+		<a href="http://luciphor.sourceforge.net">http://luciphor.sourceforge.net</a><br>
+	</li>
+	
+	<li>
+		Unpack the zip file. This should produce three items:<br/>
+		<div id="code">
+			mstoolkit-read-only/<br/>
+			Makefile<br/>
+			src/<br/>
+		</div>
+	</li>
+	
+	<li>
+		First compile the MS-ToolKit:
+		<div id="code">
+			cd mstoolkit-read-only/<br/>
+			make<br/>
+			cd ..<br/>
+		</div>
+		This will produce the static libraries: <span id="code2">libmstoolkit.a</span>
+	</li>
+	<li>
+		Now compile luciphor:
+		<div id="code">make</div>
+		If all went well, you should find an executable program called <span id="code2">luciphor</span>
+		in the current directory.<br>
+		For general usage instructions, execute luciphor and it will print out some (hopefully) useful information.
+	</li>
+</ol>
+<br>
+If you have questions or problems please post to our discussion forum at:<br>
+<span id="code2">luciphor-support@googlegroups.com</span>
+<br>
+</div>
+
+
+
+
+</body></html>

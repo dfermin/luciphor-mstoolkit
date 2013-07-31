@@ -1,0 +1,29 @@
+K 25
+svn:wc:ra_dav:version-url
+V 36
+/svn/!svn/ver/45/trunk/src/MSToolkit
+END
+MSReader.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/svn/!svn/ver/45/trunk/src/MSToolkit/MSReader.cpp
+END
+Spectrum.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/svn/!svn/ver/40/trunk/src/MSToolkit/Spectrum.cpp
+END
+MSObject.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/svn/!svn/ver/11/trunk/src/MSToolkit/MSObject.cpp
+END
+RAWReader.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/svn/!svn/ver/42/trunk/src/MSToolkit/RAWReader.cpp
+END

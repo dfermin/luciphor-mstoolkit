@@ -1,0 +1,65 @@
+K 25
+svn:wc:ra_dav:version-url
+V 38
+/svn/!svn/ver/11/trunk/src/expat-2.0.1
+END
+xmltok.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/svn/!svn/ver/11/trunk/src/expat-2.0.1/xmltok.cpp
+END
+xmltok_ns.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 52
+/svn/!svn/ver/11/trunk/src/expat-2.0.1/xmltok_ns.cpp
+END
+xmltok.c
+K 25
+svn:wc:ra_dav:version-url
+V 47
+/svn/!svn/ver/11/trunk/src/expat-2.0.1/xmltok.c
+END
+xmltok_ns.c
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/svn/!svn/ver/11/trunk/src/expat-2.0.1/xmltok_ns.c
+END
+xmltok_impl.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/svn/!svn/ver/11/trunk/src/expat-2.0.1/xmltok_impl.cpp
+END
+xmltok_impl.c
+K 25
+svn:wc:ra_dav:version-url
+V 52
+/svn/!svn/ver/11/trunk/src/expat-2.0.1/xmltok_impl.c
+END
+xmlrole.c
+K 25
+svn:wc:ra_dav:version-url
+V 48
+/svn/!svn/ver/11/trunk/src/expat-2.0.1/xmlrole.c
+END
+xmlrole.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/svn/!svn/ver/11/trunk/src/expat-2.0.1/xmlrole.cpp
+END
+xmlparse.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/svn/!svn/ver/11/trunk/src/expat-2.0.1/xmlparse.cpp
+END
+xmlparse.c
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/svn/!svn/ver/11/trunk/src/expat-2.0.1/xmlparse.c
+END

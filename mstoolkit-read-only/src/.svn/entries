@@ -1,0 +1,46 @@
+10
+
+dir
+47
+http://mstoolkit.googlecode.com/svn/trunk/src
+http://mstoolkit.googlecode.com/svn
+
+
+
+2013-05-29T20:16:11.200778Z
+46
+Michael.Hoopmann@gmail.com
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+c49125b7-ef20-69e5-5e04-5a48f9a68951
+
+hdf5-1.8.8
+dir
+
+zLib-1.2.5
+dir
+
+mzParser
+dir
+
+MSToolkit
+dir
+
+sqlite-3.7.7.1
+dir
+
+expat-2.0.1
+dir
+

@@ -1,0 +1,41 @@
+K 25
+svn:wc:ra_dav:version-url
+V 22
+/svn/!svn/ver/47/trunk
+END
+MSToolkit.sln
+K 25
+svn:wc:ra_dav:version-url
+V 36
+/svn/!svn/ver/24/trunk/MSToolkit.sln
+END
+MSToolkitLite.vcproj
+K 25
+svn:wc:ra_dav:version-url
+V 43
+/svn/!svn/ver/24/trunk/MSToolkitLite.vcproj
+END
+MSToolkitLiteCLR.vcproj
+K 25
+svn:wc:ra_dav:version-url
+V 46
+/svn/!svn/ver/14/trunk/MSToolkitLiteCLR.vcproj
+END
+MSToolkit.vcproj
+K 25
+svn:wc:ra_dav:version-url
+V 39
+/svn/!svn/ver/24/trunk/MSToolkit.vcproj
+END
+MSToolkitCLR.vcproj
+K 25
+svn:wc:ra_dav:version-url
+V 42
+/svn/!svn/ver/24/trunk/MSToolkitCLR.vcproj
+END
+Makefile
+K 25
+svn:wc:ra_dav:version-url
+V 31
+/svn/!svn/ver/30/trunk/Makefile
+END

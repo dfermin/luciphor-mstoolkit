@@ -1,0 +1,89 @@
+K 25
+svn:wc:ra_dav:version-url
+V 35
+/svn/!svn/ver/46/trunk/src/mzParser
+END
+RAMPface.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 48
+/svn/!svn/ver/46/trunk/src/mzParser/RAMPface.cpp
+END
+saxmzxmlhandler.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/svn/!svn/ver/46/trunk/src/mzParser/saxmzxmlhandler.cpp
+END
+mzMLReader.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/svn/!svn/ver/16/trunk/src/mzParser/mzMLReader.cpp
+END
+mzParser.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 48
+/svn/!svn/ver/35/trunk/src/mzParser/mzParser.cpp
+END
+BasicSpectrum.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 53
+/svn/!svn/ver/46/trunk/src/mzParser/BasicSpectrum.cpp
+END
+BasicChromatogram.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/!svn/ver/35/trunk/src/mzParser/BasicChromatogram.cpp
+END
+PWIZface.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 48
+/svn/!svn/ver/16/trunk/src/mzParser/PWIZface.cpp
+END
+mzpMz5Config.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 52
+/svn/!svn/ver/16/trunk/src/mzParser/mzpMz5Config.cpp
+END
+saxmzmlhandler.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/svn/!svn/ver/46/trunk/src/mzParser/saxmzmlhandler.cpp
+END
+saxhandler.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/svn/!svn/ver/16/trunk/src/mzParser/saxhandler.cpp
+END
+mz5handler.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/svn/!svn/ver/46/trunk/src/mzParser/mz5handler.cpp
+END
+mzpMz5Structs.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 53
+/svn/!svn/ver/35/trunk/src/mzParser/mzpMz5Structs.cpp
+END
+mzp_base64.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/svn/!svn/ver/11/trunk/src/mzParser/mzp_base64.cpp
+END
+Czran.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 45
+/svn/!svn/ver/11/trunk/src/mzParser/Czran.cpp
+END
