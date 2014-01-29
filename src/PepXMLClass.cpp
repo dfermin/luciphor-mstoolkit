@@ -124,18 +124,37 @@ void PepXMLClass::parsePepXMLfile() {
 		//spectrum_query line
 		else if( boost::regex_match(line, matches, spectrum_query_regex)) {
 			score = 0; // prep for next iteration
-
-			mds = new matchDataStruct();
-			mds->specId.assign(matches[1].first, matches[1].second); // specId
+                        string tmpId;
+                        
+                        
+                        mds = new matchDataStruct();
+                        
+                        tmp = "";
+                        tmp.assign(matches[1].first, matches[1].second);
+                        int i = tmp.find(".") + 1; // plus 1 to include the dot
+                        tmpId = tmp.substr(0,i);
+                        tmp.clear();
+                        
+			//mds->specId.assign(matches[1].first, matches[1].second); // specId
 
 			tmp = "";
 			tmp.assign(matches[2].first, matches[2].second); // scan number
-			mds->scanNum = atoi(tmp.c_str());
+                        mds->scanNum = atoi(tmp.c_str());
 			tmp.clear();
 
 			tmp.assign(matches[3].first, matches[3].second); // charge state
 			mds->charge = atoi(tmp.c_str());
 			tmp.clear();
+                        
+                        // construct the specId for this PSM.
+                        // We do it this way to better match spectra from MGF files
+                        tmpId += int2string(mds->scanNum) + "." +
+                                int2string(mds->scanNum) + "." + 
+                                int2string(mds->charge);
+                        mds->specId = tmpId;
+                        tmpId.clear();
+                        
+                        
 			score++;
 		}
 
@@ -264,6 +283,11 @@ void PepXMLClass::readInSpectra() {
         int ctr = 0;
         int N = (signed) PSMvec->size();
         
+        if(g_ext == "mgf") {
+            parseMGF();
+            return;
+        }
+        
         // mstoolkit to read MS2 spectra
         MSReader *reader = new MSReader();
         reader->setFilter(MS2);
@@ -294,7 +318,7 @@ void PepXMLClass::readInSpectra() {
             S = new Spectrum();
             status = reader->readFile(curSpectrumFilePath.c_str(), *S, scanNum);
             if(S->getScanNumber() == 0) {
-                cerr << "Failed to get " << curSpectrumFilePath.c_str() << ":" << scanNum << endl;
+                cerr << "Failed to get " << curSpectrumFilePath.c_str() << " scan#: " << scanNum << endl;
                 exit(0);
             }
             
@@ -325,8 +349,6 @@ void PepXMLClass::readInSpectra() {
  */
 void PepXMLClass::parseMGF() {
 
-	map<string, deque<scanIdStruct> >::iterator m;
-	deque<scanIdStruct>::iterator curScan;
 	map<string, SpecStruct> *spectrumMapPtr = NULL;
 	map<string, SpecStruct>::iterator ssIter;
 	deque<PSMClass>::iterator curPSM;
@@ -338,96 +360,97 @@ void PepXMLClass::parseMGF() {
 	double mz, intensity;
 	int ctr;
 
-	for(m = scanMap.begin(); m != scanMap.end(); m++) {
+        
+        
+        // Construct a set of the MGF files to read in
+        set<string> mgfSet;
+        set<string>::iterator s;
+        for(curPSM = PSMvec->begin(); curPSM != PSMvec->end(); curPSM++) {
+            string mgfStr = curPSM->getSpectrumFileName();
+            mgfSet.insert(mgfStr);
+        }
+        
+        // Now we iterate through the set of mgf file names
+        for(s = mgfSet.begin(); s != mgfSet.end(); s++) {
+        	
+            spectrumMapPtr = new map<string, SpecStruct>;
+            cerr << *s << ": ";
 
-		spectrumMapPtr = new map<string, SpecStruct>;
-		ctr = 0;
-		cerr << m->first << ": ";
+            filesystem::path curFile( s->c_str() );
+            filesystem::path spectral_dir( g_srcDir.c_str() );
+            filesystem::path curFilePath( spectral_dir/curFile );
+            curSpectrumFilePath = curFilePath.file_string();
 
-		filesystem::path curFile( m->first.c_str() );
-		filesystem::path spectral_dir( g_srcDir.c_str() );
-		filesystem::path curFilePath( spectral_dir/curFile );
-		curSpectrumFilePath = curFilePath.file_string();
+            mgf.open(curSpectrumFilePath.c_str(), ios::in);
 
-		mgf.open(curSpectrumFilePath.c_str(), ios::in);
+            if( !mgf.is_open() ) {
+                    cerr << "\nERROR: Unable to open '" << curSpectrumFilePath << endl;
+                    exit(0);
+            }
 
-		if( !mgf.is_open() ) {
-			cerr << "\nERROR: Unable to open '" << curSpectrumFilePath << endl;
-			exit(0);
-		}
+            // iterate line-by-line over current mgf file
+            while( !mgf.eof() ) {
+                    line.clear();
+                    getline(mgf, line);
+                    
+                    
+                    if(line.substr(0,8) == "END IONS") { // end of a spectrum record
+                       
+                        if( !specId.empty() )
+                                    spectrumMapPtr->insert(pair<string, SpecStruct>(specId, *curSpectrum));
 
+                            delete(curSpectrum);
+                            curSpectrum = NULL;
+                    }
 
-		// iterate line-by-line over current mgf file
-		while( !mgf.eof() ) {
-			line.clear();
-			getline(mgf, line);
+                    else if(line.substr(0,10) == "BEGIN IONS") { // beginning of a new spectrum
+                            curSpectrum = new SpecStruct;
+                            mz = 0;
+                            intensity = 0;
+                            specId.clear();
+                    }
 
-			if(line.substr(0,7) == "END IONS") { // end of a spectrum record
-				if( !specId.empty() )
-					spectrumMapPtr->insert(pair<string, SpecStruct>(specId, *curSpectrum));
+                    else if(line.substr(0,6) == "TITLE=") { // specId line
+                            specId = line.substr(6); 
+                    }
 
-				delete(curSpectrum);
-				curSpectrum = NULL;
-			}
+                    else if( isdigit(line[0]) ) { // you've hit a peak entry
+                            vPtr = new vector<string>(2);
+                            *vPtr = split_string(line);
 
-			else if(line.substr(0,10) == "BEGIN IONS") { // beginning of a new spectrum
-				curSpectrum = new SpecStruct;
-				mz = 0;
-				intensity = 0;
-				specId.clear();
-			}
+                            mz = str2dbl( vPtr->at(0) );
+                            intensity = str2dbl( vPtr->at(1) );
 
-			else if(line.substr(0,6) == "TITLE=") { // specId line
-				specId = line.substr(6);
-			}
+                            curSpectrum->mz.push_back(mz);
+                            curSpectrum->intensity.push_back(intensity);
+                            delete(vPtr);
+                    }
+            }
+            // close current MGF file
+            mgf.close();
+            
+            
+            // Iterate over the specId values for the current file.
+            ctr = 0;
+            for(ssIter = spectrumMapPtr->begin(); ssIter != spectrumMapPtr->end(); ssIter++) {
+                string curSpecId = ssIter->first;
+                
+                for(curPSM = PSMvec->begin(); curPSM != PSMvec->end(); curPSM++) {
+                    if(curPSM->getSpecId() == curSpecId) {
+                        curPSM->recordSpectrum(ssIter->second);
+                        ctr++;
+                        break; // leave loop you matched this case
+                    }
+                }
+            }
 
-			else if( isdigit(line[0]) ) { // you've hit a peak entry
-				vPtr = new vector<string>(2);
-				*vPtr = split_string(line);
-
-				mz = str2dbl( vPtr->at(0) );
-				intensity = str2dbl( vPtr->at(1) );
-
-				curSpectrum->mz.push_back(mz);
-				curSpectrum->intensity.push_back(intensity);
-				delete(vPtr);
-			}
-		}
-		// close current MGF file
-		mgf.close();
-
-		// record the last spectrum
-		if(curSpectrum != NULL) {
-			spectrumMapPtr->insert(pair<string, SpecStruct>(specId, *curSpectrum));
-			delete(curSpectrum);
-			curSpectrum = NULL;
-		}
-
-
-		// Iterate over the specId values for the current file. 'm' is an iterator
-		// that points to the scanMap object parsed from the interact.pep.xml file
-		for(curScan = m->second.begin(); curScan != m->second.end(); curScan++) {
-			ssIter = spectrumMapPtr->find(curScan->specId);
-
-			// found match
-			if(ssIter != spectrumMapPtr->end()) {
-				for(curPSM = PSMvec->begin(); curPSM != PSMvec->end(); curPSM++) {
-					if(curPSM->getSpecId() == curScan->specId) {
-						curPSM->recordSpectrum( ssIter->second );
-						ctr++;
-					}
-				}
-			}
-		}
-
-		// clean up memory for next iteration
-		delete(spectrumMapPtr);
-		spectrumMapPtr = NULL;
-		cerr << ctr << " spectra read in.\n";
-		logF << m->first << ": " << ctr << " spectra read in.\n";
+            // clean up memory for next iteration
+            delete(spectrumMapPtr);
+            spectrumMapPtr = NULL;
+            cerr << ctr << " spectra read in.\n";
+            logF << *s << ": " << ctr << " spectra read in.\n";
 	}
 }
-
 
 
 // This function removes PSMs that cannot be scored because they don't have

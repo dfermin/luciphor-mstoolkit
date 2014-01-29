@@ -85,7 +85,7 @@ static const struct option longOpts[] = {
 		{ "noDecoys", no_argument, NULL, 0 },
 		{ "hcd", no_argument, NULL, 0 },
 		{ "SDI", no_argument, NULL, 0 },
-        { "ppm", no_argument, NULL, 0 },
+                { "ppm", no_argument, NULL, 0 },
 		{ "debug", required_argument, NULL, 0 },
 		{ "Sl", required_argument, NULL, 0 }
 };
@@ -109,7 +109,7 @@ void print_usage() {
 		 << "   -m <float>                Minimum score a PSM needs in order to be used for model parameter estimation\n"
 		 << "                             Default is " << g_model_prob << " for -x 0\n\n"
 
-		 << "   -e <mzML, mzXML, etc...>  File extension used for reading spectral data files (default is mzXML)\n"
+		 << "   -e <mzML, mzXML, mgf>     File extension used for reading spectral data files (default is mzXML)\n"
 		 << "   -f                        \"The Full Monty\": Report scores for all spectra not just representative ones\n"
 		 << "   -A / --Ascore             Run our version of Ascore algorithm instead of Luciphor (m/z window fixed at 0.6 for this)\n"
 		 << "   -c / --capture            Capture PSM's you can't model, use the model parameters for the next closest charge state\n"
