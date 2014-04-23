@@ -84,11 +84,14 @@ void PepXMLClass::parsePepXMLfile() {
 	boost::regex sequest_deltacn_regex("^.*<search_score name=\"deltacn\" value=\"([^\"]+)\".*");
 	boost::regex xtandem_expect_regex("^.*<search_score name=\"expect\" value=\"([^\"]+)\".*");
 	boost::regex mascot_ionscore_regex("^.*<search_score name=\"ionscore\" value=\"([^\"]+)\".*");
-
+        boost::regex xtandem_hyperscore_regex("^.*<search_score name=\"hyperscore\" value=\"([^\"]+)\".*");
+        
 	scoring_regex_ptr = &peptideprophet_result_regex; // the default
 	if(g_scoringMethod == 1) scoring_regex_ptr = &sequest_xcorr_regex;
 	if(g_scoringMethod == 2) scoring_regex_ptr = &xtandem_expect_regex;
 	if(g_scoringMethod == 3) scoring_regex_ptr = &mascot_ionscore_regex;
+        if(g_scoringMethod == 4) scoring_regex_ptr = &xtandem_hyperscore_regex;
+	
 
 
 	ifstream in;
@@ -102,143 +105,147 @@ void PepXMLClass::parsePepXMLfile() {
 	cerr << "\nParsing: " << g_srcXMLfile << endl;
 
 	while( !in.eof() ) {
+            getline(in, line);
 
-		getline(in, line);
+            if( boost::regex_match(line, matches, aminoacid_mod_regex) ) {
+                    // record this AA modification into the AAmass map object
+                    AA.assign(matches[1].first, matches[1].second);
 
-		if( boost::regex_match(line, matches, aminoacid_mod_regex) ) {
-			// record this AA modification into the AAmass map object
-			AA.assign(matches[1].first, matches[1].second);
+                    tmp.assign(matches[2].first, matches[2].second);
+                    double modMass = strtod(tmp.c_str(), NULL);
+                    tmp.clear();
 
-			tmp.assign(matches[2].first, matches[2].second);
-			double modMass = strtod(tmp.c_str(), NULL);
-			tmp.clear();
+                    tmp.assign(matches[3].first, matches[3].second);
+                    isVar = tmp[0];
 
-			tmp.assign(matches[3].first, matches[3].second);
-			isVar = tmp[0];
-
-			addAAmass(AA, modMass, isVar);
-			tmp.clear();
-		}
-
-
-		//spectrum_query line
-		else if( boost::regex_match(line, matches, spectrum_query_regex)) {
-			score = 0; // prep for next iteration
-                        string tmpId;
-                        
-                        
-                        mds = new matchDataStruct();
-                        
-                        tmp = "";
-                        tmp.assign(matches[1].first, matches[1].second);
-                        int i = tmp.find(".") + 1; // plus 1 to include the dot
-                        tmpId = tmp.substr(0,i);
-                        tmp.clear();
-                        
-			//mds->specId.assign(matches[1].first, matches[1].second); // specId
-
-			tmp = "";
-			tmp.assign(matches[2].first, matches[2].second); // scan number
-                        mds->scanNum = atoi(tmp.c_str());
-			tmp.clear();
-
-			tmp.assign(matches[3].first, matches[3].second); // charge state
-			mds->charge = atoi(tmp.c_str());
-			tmp.clear();
-                        
-                        // construct the specId for this PSM.
-                        // We do it this way to better match spectra from MGF files
-                        tmpId += int2string(mds->scanNum) + "." +
-                                int2string(mds->scanNum) + "." + 
-                                int2string(mds->charge);
-                        mds->specId = tmpId;
-                        tmpId.clear();
-                        
-                        
-			score++;
-		}
+                    addAAmass(AA, modMass, isVar);
+                    tmp.clear();
+            }
 
 
-		//search_hit line
-		else if( boost::regex_match(line, matches, search_hit_regex) ) {
-			mds->peptide.assign(matches[1].first, matches[1].second);
+            //spectrum_query line
+            else if( boost::regex_match(line, matches, spectrum_query_regex)) {
+                    score = 0; // prep for next iteration
+                    string tmpId;
 
-			tmp.assign(matches[2].first, matches[2].second);
-			mass = strtod(tmp.c_str(), NULL);
-			mds->mass = mass;
-			tmp.clear();
-			score++;
-		}
+                    // need this regex to capture unorthodox specId names
+                    boost::regex specId_regex("(.+\\.)\\d+\\.\\d+\\.\\d+$"); 
+                    boost::smatch M2;
 
-		//mod_aminoacid_mass line
-		else if( boost::regex_match(line, matches, modification_mass_regex)) {
-			tmp.assign(matches[1].first, matches[1].second);
-			modPos = atoi(tmp.c_str()) - 1; // zero-bases indexing
-			tmp.clear();
+                    mds = new matchDataStruct();
 
-			tmp.assign(matches[2].first, matches[2].second);
-			mass = strtod(tmp.c_str(), NULL);
-			tmp.clear();
-
-			mds->mods[ modPos ] = mass; // record modification position
-			score++;
-		}
-
-		else if( boost::regex_match(line, matches, nterm_mod_regex)) {
-			tmp.assign(matches[1].first, matches[1].second);
-			mass = strtod(tmp.c_str(), NULL);
-			tmp.clear();
-
-			mds->mods[ -1 ] = mass; // -1 means n-terminus
-		}
+                    tmp = "";
+                    tmp.assign(matches[1].first, matches[1].second);
 
 
-		// whatever the PSM selection criterion is, we will store it in
-		// the iniProb variable of the PSMClass
-		else if( boost::regex_match(line, matches, *scoring_regex_ptr) ) {
-			tmp.assign(matches[1].first, matches[2].second);
-
-			double d = strtod(tmp.c_str(), NULL);
-			if(g_scoringMethod == 2) {
-				if(d < TINY_NUM) d = TINY_NUM; // prevents errors when taking long
-				mds->iniProb = -1.0 * log(d);
-			}
-			else mds->iniProb = d;
-			tmp.clear();
-			score++;
-		}
+                    // this should capture 95% of specId cases.
+                    if(boost::regex_match(tmp, M2, specId_regex)) {
+                        tmpId = "";
+                        tmpId.assign(M2[1].first, M2[1].second);
+                    }
 
 
-		//end of record, decide if you are going to keep it
-		else if( boost::regex_match(line, end_spectrum_query) ) {
 
-			if(score >= 4) {
-				// if we are limiting charge states, this line of code will exclude all PSMs
-				// that do not match the requested charge state.
-				if(g_LIMIT_CHARGE_STATE && (mds->charge != g_CHARGE_STATE)) mds->iniProb = -10000;
+                    tmp = "";
+                    tmp.assign(matches[2].first, matches[2].second); // scan number
+                    mds->scanNum = atoi(tmp.c_str());
+                    tmp.clear();
 
-				// double check that the amino acid sequence of the peptide is valid
-				// some databases have invalid peptide characters
-				if( allValidAAs(&mds->peptide) == false ) mds->iniProb = -10000;
+                    tmp.assign(matches[3].first, matches[3].second); // charge state
+                    mds->charge = atoi(tmp.c_str());
+                    tmp.clear();
 
-				if(mds->iniProb >= g_prob_threshold) { // meets our score threshold
+                    // construct the specId for this PSM.
+                    // We do it this way to better match spectra from MGF files
+                    tmpId += int2string(mds->scanNum) + "." +
+                            int2string(mds->scanNum) + "." + 
+                            int2string(mds->charge);
+                    mds->specId = tmpId;
+                    tmpId.clear();
 
-					curPSM = new PSMClass(mds);
 
-					if(curPSM->isKeeper()) PSMvec->push_back(*curPSM);
+                    score++;
+            }
 
-					// we'll use this spectrum for estimating the model parameters
-					if(curPSM->useForModeling()) numPSMs_forModeling++;
 
-				}
-			}
+            //search_hit line
+            else if( boost::regex_match(line, matches, search_hit_regex) ) {
+                    mds->peptide.assign(matches[1].first, matches[1].second);
 
-			delete(curPSM);
-			curPSM = NULL;
+                    tmp.assign(matches[2].first, matches[2].second);
+                    mass = strtod(tmp.c_str(), NULL);
+                    mds->mass = mass;
+                    tmp.clear();
+                    score++;
+            }
 
-			delete(mds);
-			mds = NULL;
-		}
+            //mod_aminoacid_mass line
+            else if( boost::regex_match(line, matches, modification_mass_regex)) {
+                    tmp.assign(matches[1].first, matches[1].second);
+                    modPos = atoi(tmp.c_str()) - 1; // zero-bases indexing
+                    tmp.clear();
+
+                    tmp.assign(matches[2].first, matches[2].second);
+                    mass = strtod(tmp.c_str(), NULL);
+                    tmp.clear();
+
+                    mds->mods[ modPos ] = mass; // record modification position
+                    score++;
+            }
+
+            else if( boost::regex_match(line, matches, nterm_mod_regex)) {
+                    tmp.assign(matches[1].first, matches[1].second);
+                    mass = strtod(tmp.c_str(), NULL);
+                    tmp.clear();
+
+                    mds->mods[ -1 ] = mass; // -1 means n-terminus
+            }
+
+
+            // whatever the PSM selection criterion is, we will store it in
+            // the iniProb variable of the PSMClass
+            else if( boost::regex_match(line, matches, *scoring_regex_ptr) ) {
+                    tmp.assign(matches[1].first, matches[2].second);
+
+                    double d = strtod(tmp.c_str(), NULL);
+                    if(g_scoringMethod == 2) {
+                            if(d < TINY_NUM) d = TINY_NUM; // prevents errors when taking log
+                            mds->iniProb = -1.0 * log(d);
+                    }
+                    else mds->iniProb = d;
+                    tmp.clear();
+                    score++;
+            }
+
+
+            //end of record, decide if you are going to keep it
+            else if( boost::regex_match(line, end_spectrum_query) ) {
+                if(score >= 4) {
+                    // if we are limiting charge states, this line of code will exclude all PSMs
+                    // that do not match the requested charge state.
+                    if(g_LIMIT_CHARGE_STATE && (mds->charge != g_CHARGE_STATE)) mds->iniProb = -10000;
+
+                    // double check that the amino acid sequence of the peptide is valid
+                    // some databases have invalid peptide characters
+                    if( allValidAAs(&mds->peptide) == false ) mds->iniProb = -10000;
+
+                    if(mds->iniProb >= g_prob_threshold) { // meets our score threshold
+
+                        curPSM = new PSMClass(mds);
+
+                        if(curPSM->isKeeper()) PSMvec->push_back(*curPSM);
+
+                        // we'll use this spectrum for estimating the model parameters
+                        if(curPSM->useForModeling()) numPSMs_forModeling++;
+                    }
+                }
+
+                delete(curPSM);
+                curPSM = NULL;
+
+                delete(mds);
+                mds = NULL;
+            }
 
 	}
 	in.close();
@@ -486,17 +493,18 @@ void PepXMLClass::prunePSMdeq() {
 	if(g_scoringMethod == 1) sm = "Sequest XCorr";
 	if(g_scoringMethod == 2) sm = "-log(E-value)";
 	if(g_scoringMethod == 3) sm = "Mascot Ion Score";
+        if(g_scoringMethod == 4) sm = "X!Tandem Hyperscore";
 
 	for(curZ = zMap.begin(); curZ != zMap.end(); curZ++) {
 		// all PSMs for this charge state must be removed
 		if(curZ->second.maxScore < g_model_prob) {
 			cerr << "Maximum " << sm << " score observed for +" << curZ->first << " "
-				 << "charge state PSMs: " << curZ->second.maxScore << endl
-				 << "This is below the modeling threshold of: " << g_model_prob << "\n"
-			     << "Discarding " << curZ->second.totalZ << " PSM's "
-				 << "due to insufficient data for modeling of their charge state.\n"
-				 << "If you want to try and 'capture' these cases, adjust "
-				 << "your Luciphor parameters\n";
+                            << "charge state PSMs: " << curZ->second.maxScore << endl
+                            << "This is below the modeling threshold of: " << g_model_prob << "\n"
+			    << "Discarding " << curZ->second.totalZ << " PSM's "
+                            << "due to insufficient data for modeling of their charge state.\n"
+                            << "If you want to try and 'capture' these cases, adjust "
+                            << "your Luciphor parameters\n";
 
 			z = curZ->first;
 			for(curPSM = PSMvec->begin(); curPSM != PSMvec->end(); curPSM++) {
@@ -568,6 +576,19 @@ void PepXMLClass::acquireModelParameters() {
 	string msg;
 	fstream debug_modelData;
 
+        
+        if(g_DEBUG_MODE == 3) {
+            if(boost::filesystem::exists("modelData.debug")) {
+                debug_modelData.open("modelData.debug", ios::app);
+            }
+            else {
+                debug_modelData.open("modelData.debug", ios::out);
+                debug_modelData << "charge\tionType\tdataType\tvalue\n";
+            }
+        }
+        
+        
+        
 	// A pool of reusable threads that will process the data.
 	// The default number of threads is 1
 	boost::threadpool::pool TP( g_NUM_THREADS );
@@ -590,20 +611,19 @@ void PepXMLClass::acquireModelParameters() {
 	// If we don't get at least 'N' PSMs for a given charge state, we can't model
 	// that charge state. The user can force the program to model them.
 	for(curChargeState = 2; curChargeState <= maxChargeState; curChargeState++) {
-
-		zN = 0;
-		for(curPSM = PSMvec->begin(); curPSM != PSMvec->end(); curPSM++) {
-			if( curPSM->useForModeling() ) {
-				if(curPSM->getCharge() == curChargeState) zN++;
-			}
-		}
-		chargeFreqMap[ curChargeState ] = zN;
+            zN = 0;
+            for(curPSM = PSMvec->begin(); curPSM != PSMvec->end(); curPSM++) {
+                if( curPSM->useForModeling() ) {
+                    if(curPSM->getCharge() == curChargeState) zN++;
+                }
+            }
+            chargeFreqMap[ curChargeState ] = zN;
 	}
 
 	for(cfm_iter = chargeFreqMap.begin(); cfm_iter != chargeFreqMap.end(); cfm_iter++) {
-		cerr << "+" << cfm_iter->first << ":";
-		cerr << setw(5);
-		cerr << cfm_iter->second << " PSMs for modeling.\n";
+            cerr << "+" << cfm_iter->first << ":";
+            cerr << setw(5);
+            cerr << cfm_iter->second << " PSMs for modeling.\n";
 	}
 	cerr << setw(0);
 
@@ -619,11 +639,10 @@ void PepXMLClass::acquireModelParameters() {
 		U_dist.clear();
 
 		for(curPSM = PSMvec->begin(); curPSM != PSMvec->end(); curPSM++) {
-
-			if(curPSM->getCharge() != curChargeState) continue;
-			if( !curPSM->useForModeling() ) continue;
-			zN++;
-			TP.schedule( boost::bind(&PSMClass::threaded_recordModelingParameters_matched, boost::ref(*curPSM) ));
+                    if(curPSM->getCharge() != curChargeState) continue;
+                    if( !curPSM->useForModeling() ) continue;
+                    zN++;
+                    TP.schedule( boost::bind(&PSMClass::threaded_recordModelingParameters_matched, boost::ref(*curPSM) ));
 		}
 		TP.wait(); // wait for all the threads to end
 
@@ -660,19 +679,13 @@ void PepXMLClass::acquireModelParameters() {
 		if(zN >= g_MIN_MODEL_NUM) { // record modeling parameters only if you have data for the current charge state
 
 			if(g_DEBUG_MODE == 3) {
+				for(L = M_ints_B.begin(); L != M_ints_B.end(); L++) debug_modelData << curChargeState << "\tb\tI\t" << *L << endl;
+				for(L = M_ints_Y.begin(); L != M_ints_Y.end(); L++) debug_modelData << curChargeState << "\ty\tI\t" << *L << endl;
+				for(L = M_dist_B.begin(); L != M_dist_B.end(); L++) debug_modelData << curChargeState << "\tb\tD\t" << *L << endl;
+				for(L = M_dist_Y.begin(); L != M_dist_Y.end(); L++) debug_modelData << curChargeState << "\ty\tD\t" << *L << endl;
 
-				debug_modelData.open("modelData.debug", ios::out);
-				debug_modelData << "dataType\tvalue\n";
-
-				for(L = M_ints_B.begin(); L != M_ints_B.end(); L++) debug_modelData << "M_I_b\t" << *L << endl;
-				for(L = M_ints_Y.begin(); L != M_ints_Y.end(); L++) debug_modelData << "M_I_y\t" << *L << endl;
-				for(L = M_dist_B.begin(); L != M_dist_B.end(); L++) debug_modelData << "M_D_b\t" << *L << endl;
-				for(L = M_dist_Y.begin(); L != M_dist_Y.end(); L++) debug_modelData << "M_D_y\t" << *L << endl;
-
-				for(L = U_ints.begin(); L != U_ints.end(); L++) debug_modelData << "U_I\t" << *L << endl;
-				for(L = U_dist.begin(); L != U_dist.end(); L++) debug_modelData << "U_D\t" << *L << endl;
-
-				debug_modelData.close();
+				for(L = U_ints.begin(); L != U_ints.end(); L++) debug_modelData << curChargeState << "\tu\tI\t" << *L << endl;
+                                for(L = U_dist.begin(); L != U_dist.end(); L++) debug_modelData << curChargeState << "\tu\tD\t" << *L << endl;
 			}
 
 
@@ -688,7 +701,7 @@ void PepXMLClass::acquireModelParameters() {
 
 			// distance
 			const double CID_ADJUST = 16.0/25.0; //hwchoi adjustment factor 4/5 to std. dev
-
+                        
 			meanMd_b = getMean(&M_dist_B);
 			varMd_b  = getVar(&M_dist_B) * CID_ADJUST;
 
@@ -766,6 +779,9 @@ void PepXMLClass::acquireModelParameters() {
 
 	} // end model building over given charge state
 
+        if(g_DEBUG_MODE == 3) debug_modelData.close();
+        
+        
 	if(g_captureChargeStateModel) {
 		if(!missedChargeStates.empty()) cerr << endl; // prettier output
 
@@ -980,14 +996,15 @@ void PepXMLClass::scoreSpectra() {
 	cerr << "Scoring...  ";
 	for(curPSM = PSMvec->begin(); curPSM != PSMvec->end(); curPSM++) {
 
-		if(g_scoreSelect) { // consider only PSMs in user list
-			set<string>::iterator s;
-			s = g_PSMscoreSet.find(curPSM->getSpecId());
-			if(s == g_PSMscoreSet.end()) continue;
-		}
+            if(g_scoreSelect) { // consider only PSMs in user list
+                set<string>::iterator s;
+                s = g_PSMscoreSet.find(curPSM->getSpecId());
+                if(s == g_PSMscoreSet.end()) continue;
+            }
 
-		TP.schedule(boost::bind( &PSMClass::threaded_scorePSM, boost::ref(*curPSM) ));
-	}
+            TP.schedule(boost::bind( &PSMClass::threaded_scorePSM, boost::ref(*curPSM) ));
+
+        }
 	TP.wait(); // wait for all jobs in threadpool queue to finish.
 
 	cerr << "Done.\n\n";

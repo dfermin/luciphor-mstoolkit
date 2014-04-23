@@ -139,7 +139,7 @@ void MSProductClass::generate_NL_ionsMZ(string ion, char ion_type) {
 	int N = (signed) ion.length();
 	string Nstr = int2string(N);
 	string new_ion;
-	string phosphoChars = "sty";
+	string phosphoChars = "sty234567890@#$%&;?~";
 	size_t f;
 
 	bool hasPhospho = false;
@@ -151,7 +151,8 @@ void MSProductClass::generate_NL_ionsMZ(string ion, char ion_type) {
 	// to decoy fragment ions. This is not the case for HCD data.
 	// Therefore we need to allow neutral losses in HCD data to be generated
 	// using all of the decoy residues
-	if( g_IS_HCD ) phosphoChars = "sty234567890@#$%&;?~";
+        // @@ fart
+	//if( g_IS_HCD ) phosphoChars = "sty234567890@#$%&;?~";
 
 
 	// compute mass of ion
@@ -429,6 +430,8 @@ void MSProductClass::recordMatchPeaks(bool forModeling ) {
 	list<double> I;
 	peakStruct *peakPtr = NULL;
 	bool isNLpeak = false;
+        vector<double> candMZ;
+        vector<double> candI;
 
 	ofstream winF;
 	if(g_DEBUG_MODE == 4) {
@@ -450,7 +453,8 @@ void MSProductClass::recordMatchPeaks(bool forModeling ) {
 	bm_type::right_const_iterator r_iter;
 
 	matchedPeaks.clear();
-
+                        
+        
 	for(int iter = 0; iter < 2; iter++) {
 
 		if(iter == 0) ionPtr = &b_ions;
@@ -471,11 +475,13 @@ void MSProductClass::recordMatchPeaks(bool forModeling ) {
 			bm.clear();
 			I.clear();
 
+                       
+                        
 			// check to see if this theoretical peak corresponds to a neutral loss
 			// peak or not
 			isNLpeak = false;
 			found = ionSeq.find("-"); // the presence of a dash implies a neutral
-									  // loss is annotated on the string
+						  // loss is annotated on the string
 			if(found != string::npos) isNLpeak = true;
 
 			if( forModeling && g_NO_NL_PEAKS_MODEL && isNLpeak ) continue;
@@ -487,19 +493,20 @@ void MSProductClass::recordMatchPeaks(bool forModeling ) {
 				intensity = curObsPeak->second;
 
 				if( (mz >= a) && (mz <= b) ) { // record match
-					bm.insert( bm_type::value_type(mz, intensity) );
-					I.push_back(intensity);
+                                    	
+                                  bm.insert( bm_type::value_type(mz, intensity) );
+                                  I.push_back(intensity);
 
-					if(g_DEBUG_MODE == 4) {
-						winF << specId << "\t"
-							 << theo_mz << "\t"
-							 << mz << "\t"
-							 << (theo_mz - mz)
-							 << endl;
-					}
+                                    if(g_DEBUG_MODE == 4) {
+                                        winF << specId << "\t"
+                                            << theo_mz << "\t"
+                                            << mz << "\t"
+                                            << (theo_mz - mz)
+                                            << endl;
+                                    }
 				}
 			}
-
+                        
 			/*
 			 * This is specific to model parameter acquisition. We don't do any
 			 * of what follows for actually scoring peaks.
@@ -542,7 +549,6 @@ void MSProductClass::recordMatchPeaks(bool forModeling ) {
 // to the theoretical peaks stored in the b_ions and y_ions maps. This function is
 // different from matchPeaks, since it is used for specific phospho-peptide permutations
 // while recordMatchPeaks() is used for model parameter building
-//void MSProductClass::getMatchedPeaks(map<double, double> *srcMapPtr, map<double, peakStruct> *Mptr) {
 void MSProductClass::getMatchedPeaks(map<double, peakStruct> *Mptr) {
 
 	map<double, double>::iterator curObsPeak;
@@ -602,6 +608,7 @@ void MSProductClass::getMatchedPeaks(map<double, peakStruct> *Mptr) {
 			bm.clear();
 			I.clear();
 
+                        
 			for(curObsPeak = local_spectrum.begin(); curObsPeak != local_spectrum.end(); curObsPeak++) {
 				mz = curObsPeak->first;
 				intensity = curObsPeak->second;
@@ -618,25 +625,29 @@ void MSProductClass::getMatchedPeaks(map<double, peakStruct> *Mptr) {
 				r_iter = bm.right.find( intensity );
 				mz = r_iter->second;
 
-				tmpD = (mz - theoPeak->second);
-				if(g_usePPM) { // scale distances to PPM units instead of Da.
-					           // this is an approximation but it works fairly well.
-					double x = ( tmpD / theo_mz ) / PPM;
-					tmpD = x;
-				}
+                          
+                            tmpD = (mz - theoPeak->second);
+                            
+                            if(g_usePPM) { // scale distances to PPM units instead of Da.
+                                               // this is an approximation but it works fairly well.
+                                    double x = ( tmpD / theo_mz ) / PPM;
+                                    tmpD = x;
+                            }
 
-				X = new peakStruct;
-				X->MZdistance = tmpD;
-				X->intensity = intensity;
-				X->ionType = (iter == 0 ? 'b' : 'y');
-				X->ionStr = theoPeak->first;
-
-				matchIter = Mptr->find(mz);
-				if(matchIter == Mptr->end()) Mptr->insert(pair<double, peakStruct>(mz, *X));
-				else {
-					if(matchIter->second.intensity < intensity) matchIter->second = *X;
-				}
-				delete(X); X = NULL;
+                            X = new peakStruct;
+                            X->MZdistance = tmpD;
+                            X->intensity = intensity;
+                            X->ionType = (iter == 0 ? 'b' : 'y');
+                            X->ionStr = theoPeak->first;
+                            
+                            matchIter = Mptr->find(mz);
+                            if(matchIter == Mptr->end()) Mptr->insert(pair<double, peakStruct>(mz, *X));
+                            else {
+                                    if(matchIter->second.intensity < intensity) matchIter->second = *X;
+                            }
+                            
+                            
+                            delete(X); X = NULL;
 			}
 		}
 	} // end for loop over iter
@@ -645,6 +656,115 @@ void MSProductClass::getMatchedPeaks(map<double, peakStruct> *Mptr) {
 	double N = (double) Mptr->size();
 	frac_matched = N / (double) totNumIons;
 }
+
+
+
+/*******************************************************************************
+ *
+ * Remake of void MSProductClass::getMatchedPeaks(map<double, peakStruct> *Mptr)
+ * 
+ * 
+ ******************************************************************************
+void MSProductClass::getMatchedPeaks(map<double, peakStruct> *Mptr) {
+    map<double, double>::iterator curObsPeak;
+    map<double, peakStruct>:: iterator matchIter;
+    map<string, double>::iterator theoPeak;
+    map<string, double> *ionPtr = NULL;
+    
+    vector<double> candMZ, candI;
+    
+    for(int iter = 0; iter < 2; iter++) {
+        
+        if(iter == 0) ionPtr = &y_ions;
+        else ionPtr = &b_ions;
+        
+        
+        for(theoPeak = ionPtr->begin(); theoPeak != ionPtr->end(); theoPeak++) {
+            string ionSeq  = theoPeak->first;
+            double theo_mz = theoPeak->second;
+            
+            double a = theo_mz - mz_err;
+            double b = theo_mz + mz_err;
+            
+            if(g_usePPM) {
+                a = theo_mz - ppmErrMap[ ionSeq ];
+                b = theo_mz - ppmErrMap[ ionSeq ];
+            }
+            
+            // determine if this peak is a neutral loss peak
+            bool isNLpeak = false;
+            size_t found = ionSeq.find("-");
+            if(found != string::npos) isNLpeak = true;
+
+            // determine if the peak should be used for scoring
+            if(isNLpeak && g_NL_MODEL_ONLY) continue;
+
+
+            // determine if 'ionSeq' contains a phosphorylated AA and if it should be matched or not
+            found = ionSeq.find(":") + 1;
+            string ss = "";
+            ss = ionSeq.substr(found);
+            
+            
+            candMZ.clear();
+            candI.clear();
+            
+            for(curObsPeak = local_spectrum.begin(); curObsPeak != local_spectrum.end(); curObsPeak++) {
+                double mz = curObsPeak->first;
+                double intensity = curObsPeak->second;
+                
+                if( (mz >= a) && (mz <= b) ) { // record potential match
+                    candMZ.push_back(mz);
+                    candI.push_back(intensity);
+                }
+            }
+            
+            // any peaks you *could* match to the current theoretical peak are in 'candMZ & candI'
+            if(!candMZ.empty()) {
+                
+                // identify the most intense peak for this match
+                int N = candMZ.size();
+                double maxI = 0;
+                double bestMZ = 0;
+                for(int i = 0; i < N; i++) {
+                    if(candI.at(i) > maxI) {
+                        maxI = candI.at(i);
+                        bestMZ = candMZ.at(i);
+                    }
+                }
+                
+                double tmpD = (bestMZ - theoPeak->second);
+                if(g_usePPM) { // scale distances to PPM units instead of Da.
+                               // this is an approximation but it works fairly well.
+                  double x = ( tmpD / theo_mz ) / PPM;
+                  tmpD = x;
+                }
+                
+                peakStruct *X = new peakStruct;
+                X->MZdistance = tmpD;
+                X->intensity = maxI;
+                X->ionType = (iter == 0 ? 'y' : 'b');
+                X->ionStr = theoPeak->first;
+                
+                matchIter = Mptr->find(bestMZ);
+                if(matchIter == Mptr->end()) // new entry
+                    Mptr->insert(pair<double, peakStruct>(bestMZ, *X));
+//                else {
+//                    if(matchIter->second.MZdistance > X->MZdistance) matchIter->second = *X;
+//                }
+                delete(X); X = NULL;
+            } // end if over empty candMZ
+        } //end loop over theoPeaks
+        
+        // record the fraction of the theoretical ions that were matched for this peptide
+        double N = (double) Mptr->size();
+        frac_matched = N / (double) totNumIons; 
+    } // end iter loop
+}
+***************************************************************/
+
+
+
 
 
 
@@ -663,7 +783,7 @@ void MSProductClass::addPeakData(map<double, peakStruct> *targetPtr, char whichM
 
 
 
-// Function returns the m/z values for all of the theoretical peaks for this peptide perumtation
+// Function returns the m/z values for all of the theoretical peaks for this peptide permutation
 void MSProductClass::assignFragmentIonsMZ(list<double> &ret) {
 	map<string, double>::iterator ion;
 
@@ -736,46 +856,46 @@ void MSProductClass::getUnmatchedPeaks(map<double, double> *srcMapPtr, map<doubl
 	multimap<double, double>::iterator mm;
 
 	for(curObsPeak = srcMapPtr->begin(); curObsPeak != srcMapPtr->end(); curObsPeak++) {
-		mz = curObsPeak->first;
-		intensity = curObsPeak->second;
+            mz = curObsPeak->first;
+            intensity = curObsPeak->second;
 
-		m_iter = Mptr->find(mz);
-		if(m_iter == Mptr->end()) { // unmatched peak
-			minDist = 0;
-			D.clear();
+            m_iter = Mptr->find(mz);
+            if(m_iter == Mptr->end()) { // unmatched peak
+                minDist = 0;
+                D.clear();
 
-			// record the distances (along m/z values) of this unmatched peak
-			// from all of the matched peaks in Mptr
-			for(m_iter = Mptr->begin(); m_iter != Mptr->end(); m_iter++) {
-				minDist = m_iter->first - mz;
-				if( dbl_isnan(minDist) ) minDist = BIG_NUM;
-				absDist = fabs(minDist);
+                // record the distances (along m/z values) of this unmatched peak
+                // from all of the matched peaks in Mptr
+                for(m_iter = Mptr->begin(); m_iter != Mptr->end(); m_iter++) {
+                        minDist = m_iter->first - mz;
+                        if( dbl_isnan(minDist) ) minDist = BIG_NUM;
+                        absDist = fabs(minDist);
 
-				D.push_back(absDist);
-				distMultiMap.insert(pair<double, double>(absDist, minDist));
-			}
+                        D.push_back(absDist);
+                        distMultiMap.insert(pair<double, double>(absDist, minDist));
+                }
 
-			// this code picks the smallest distance observed
-			D.sort();
-			mm = distMultiMap.find(D.front());
+                // this code picks the smallest distance observed
+                D.sort();
+                mm = distMultiMap.find(D.front());
 
-			D.clear();
-			for(mm = distMultiMap.equal_range(absDist).first; mm != distMultiMap.equal_range(absDist).second; mm++) {
-				D.push_back( (*mm).second );
-			}
-			D.unique();
-			D.sort();
+                D.clear();
+                for(mm = distMultiMap.equal_range(absDist).first; mm != distMultiMap.equal_range(absDist).second; mm++) {
+                        D.push_back( (*mm).second );
+                }
+                D.unique();
+                D.sort();
 
-			peakPtr = new peakStruct;
-			peakPtr->intensity = intensity;
-			tmpDist = D.back();
-			peakPtr->MZdistance = ( D.back() );
-			peakPtr->ionType = 'u';
-			Uptr->insert(pair<double, peakStruct>(mz, *peakPtr));
+                peakPtr = new peakStruct;
+                peakPtr->intensity = intensity;
+                tmpDist = D.back();
+                peakPtr->MZdistance = ( D.back() );
+                peakPtr->ionType = 'u';
+                Uptr->insert(pair<double, peakStruct>(mz, *peakPtr));
 
-			delete(peakPtr); peakPtr = NULL;
-			D.clear();
-		}
+                delete(peakPtr); peakPtr = NULL;
+                D.clear();
+            }       
 	}
 }
 
@@ -807,27 +927,28 @@ double MSProductClass::calcSpectrumScore(map<double, peakStruct> *Mpeaks) {
 	N = (signed)Mpeaks->size();
 
 	if(g_DEBUG_MODE == 2) {
-		// check to see if the debug file already exists, if so, open it for
-		// appending. Otherwise, create it.
-		if( fileExists("ionScores.debug") ) {
-			debug_ionScores.open("ionScores.debug", ios::out | ios::app);
-		}
-		else { // create file
-			debug_ionScores.open("ionScores.debug", ios::out);
-			debug_ionScores << "specId" << "\t"
-							<< "ionSeq" << "\t"
-							<< "mz" << "\t"
-							<< "intensity" << "\t"
-							<< "mzDist" << "\t"
-							<< "intense_wt" << "\t"
-							<< "log_ints_M" << "\t"
-							<< "log_ints_U" << "\t"
-							<< "log_dist_M" << "\t"
-							<< "log_dist_U" << "\t"
-							<< "Iscore" << "\t"
-							<< "Dscore" << "\t"
-							<< "score" << endl; // final score for peak
-		}
+            // check to see if the debug file already exists, if so, open it for
+            // appending. Otherwise, create it.
+            if( fileExists("ionScores.debug") ) {
+                    debug_ionScores.open("ionScores.debug", ios::out | ios::app);
+            }
+            else { // create file
+                debug_ionScores.open("ionScores.debug", ios::out);
+                debug_ionScores << "specId" << "\t"
+                    << "curPeptide\t"
+                    << "ionSeq" << "\t"
+                    << "mz" << "\t"
+                    << "intensity" << "\t"
+                    << "mzDist" << "\t"
+                    << "intense_wt" << "\t"
+                    << "log_ints_M" << "\t"
+                    << "log_ints_U" << "\t"
+                    << "log_dist_M" << "\t"
+                    << "log_dist_U" << "\t"
+                    << "Iscore" << "\t"
+                    << "Dscore" << "\t"
+                    << "score" << endl; // final score for peak
+            }
 	}
 
 
@@ -835,87 +956,88 @@ double MSProductClass::calcSpectrumScore(map<double, peakStruct> *Mpeaks) {
 	if(N == 0) score = 0.0; // the spectrum has no matched peaks
 	else {
 
-		score = 0.0;
-		for(curPeak = Mpeaks->begin(); curPeak != Mpeaks->end(); curPeak++) {
-			mz = curPeak->first;
-			intensity = curPeak->second.intensity;
-			mzDist    = curPeak->second.MZdistance;
-			peakType  = curPeak->second.ionType;
-			ionSeq    = curPeak->second.ionStr;
+            score = 0.0;
+            for(curPeak = Mpeaks->begin(); curPeak != Mpeaks->end(); curPeak++) {
+                mz = curPeak->first;
+                intensity = curPeak->second.intensity;
+                mzDist    = curPeak->second.MZdistance;
+                peakType  = curPeak->second.ionType;
+                ionSeq    = curPeak->second.ionStr;
 
-			// determine if 'ionSeq' contains a phosphorylated AA and if it should be scored or not
-			found = ionSeq.find(":") + 1;
-			ss = "";
-			ss = ionSeq.substr(found);
+                // determine if 'ionSeq' contains a phosphorylated AA and if it should be scored or not
+                found = ionSeq.find(":") + 1;
+                ss = "";
+                ss = ionSeq.substr(found);
 
-			// determine if 'ionSeq' is a neutral loss peak
-			isNLpeak = false;
-			found = ionSeq.find("-");
-			if(found != string::npos) isNLpeak = true;
-
-
-			log_prob_M = log_prob_U = log_dist_M = log_dist_U = 0.0;
-			muM = varM = muM_dist = varM_dist = 0.0;
-			Dscore = Iscore = 0.0;
-
-			if(peakType == 'b') {
-				muM  = paramPtr->matched_mean_b;
-				varM = paramPtr->matched_var_b;
-				muM_dist  = paramPtr->matched_dist_mean_b;
-				varM_dist = paramPtr->matched_dist_var_b;
-			}
-			else if(peakType == 'y') {
-				muM  = paramPtr->matched_mean_y;
-				varM = paramPtr->matched_var_y;
-				muM_dist  = paramPtr->matched_dist_mean_y;
-				varM_dist = paramPtr->matched_dist_var_y;
-			}
+                // determine if 'ionSeq' is a neutral loss peak
+                isNLpeak = false;
+                found = ionSeq.find("-");
+                if(found != string::npos) isNLpeak = true;
 
 
-			/*
-			 * INTENSITY
-			 */
-			log_prob_M = log_gaussianProb(muM, varM, intensity);
-			log_prob_U = log_gaussianProb(muU, varU, intensity);
-			Iscore = log_prob_M - log_prob_U;
+                log_prob_M = log_prob_U = log_dist_M = log_dist_U = 0.0;
+                muM = varM = muM_dist = varM_dist = 0.0;
+                Dscore = Iscore = 0.0;
 
-			/*
-			 * DISTANCE
-			 */
-			log_dist_M = log_gaussianProb(muM_dist, varM_dist, mzDist);
-			log_dist_U = log_gaussianProb(muU_dist, varU_dist, mzDist);
-			Dscore = log_dist_M - log_dist_U;
+                if(peakType == 'b') {
+                        muM  = paramPtr->matched_mean_b;
+                        varM = paramPtr->matched_var_b;
+                        muM_dist  = paramPtr->matched_dist_mean_b;
+                        varM_dist = paramPtr->matched_dist_var_b;
+                }
+                else if(peakType == 'y') {
+                        muM  = paramPtr->matched_mean_y;
+                        varM = paramPtr->matched_var_y;
+                        muM_dist  = paramPtr->matched_dist_mean_y;
+                        varM_dist = paramPtr->matched_dist_var_y;
+                }
 
-			double intense_wt = 1.0 / ( 1.0 + exp(-Iscore) );
-			
-			if(dbl_isnan(Dscore) || isInfinite(Dscore)) x = 0;
-			else {
-				x = intense_wt * Dscore;
-			}
 
-			score += x;
+                /*
+                 * INTENSITY
+                 */
+                log_prob_M = log_gaussianProb(muM, varM, intensity);
+                log_prob_U = log_gaussianProb(muU, varU, intensity);
+                Iscore = log_prob_M - log_prob_U;
 
-			/***************************************************/
-			/***************************************************/
-			/*  This is where we print out scores for each ion */
-			/***************************************************/
-			/***************************************************/
-			if(g_DEBUG_MODE == 2) {
-				debug_ionScores << specId << "\t"
-								<< ionSeq << "\t"
-								<< mz << "\t"
-								<< intensity << "\t"
-								<< mzDist << "\t"
-								<< intense_wt << "\t"
-								<< log_prob_M << "\t"
-								<< log_prob_U <<  "\t"
-								<< log_dist_M << "\t"
-								<< log_dist_U << "\t"
-								<< Iscore << "\t"
-								<< Dscore << "\t"
-								<< x << endl; // final score for peak
-			}
-		}
+                /*
+                 * DISTANCE
+                 */
+                log_dist_M = log_gaussianProb(muM_dist, varM_dist, mzDist);
+                log_dist_U = log_gaussianProb(muU_dist, varU_dist, mzDist);
+                Dscore = log_dist_M - log_dist_U;
+
+                double intense_wt = 1.0 / ( 1.0 + exp(-Iscore) );
+
+                if(dbl_isnan(Dscore) || isInfinite(Dscore)) x = 0;
+                else {
+                        x = intense_wt * Dscore;
+                }
+
+                score += x;
+
+                /***************************************************/
+                /***************************************************/
+                /*  This is where we print out scores for each ion */
+                /***************************************************/
+                /***************************************************/
+                if(g_DEBUG_MODE == 2) {
+                    debug_ionScores << specId << "\t"
+                            << seq << "\t"
+                            << ionSeq << "\t"
+                            << mz << "\t"
+                            << intensity << "\t"
+                            << mzDist << "\t"
+                            << intense_wt << "\t"
+                            << log_prob_M << "\t"
+                            << log_prob_U <<  "\t"
+                            << log_dist_M << "\t"
+                            << log_dist_U << "\t"
+                            << Iscore << "\t"
+                            << Dscore << "\t"
+                            << x << endl; // final score for peak
+                }
+            }
 	}
 
 	if(g_DEBUG_MODE == 2) debug_ionScores.close();
@@ -955,29 +1077,29 @@ double MSProductClass::calcSpectrumScore_HCD(map<double, peakStruct> *Mpeaks) {
 
 
 	if(g_DEBUG_MODE == 2) {
-		// check to see if the debug file already exists, if so, open it for
-		// appending. Otherwise, create it.
-		if( fileExists("ionScores.debug") ) {
-			debug_ionScores.open("ionScores.debug", ios::out | ios::app);
-		}
-		else { // create file
-			debug_ionScores.open("ionScores.debug", ios::out);
-			debug_ionScores << "specId" << "\t"
-							<< "ionSeq" << "\t"
-							<< "mz" << "\t"
-							<< "intensity" << "\t"
-							<< "mzDist" << "\t"
-				            << "log_dist_M\t"
-							<< "log_dist_U\t"
-							<< "Dscore\t"
-							<< "log_ints_M" << "\t"
-							<< "log_ints_U" << "\t"
-							<< "log_dist_M" << "\t"
-							<< "log_dist_U" << "\t"
-							<< "Iscore" << "\t"
-							<< "Dscore" << "\t"
-						 	<< "score\n";
-		}
+            // check to see if the debug file already exists, if so, open it for
+            // appending. Otherwise, create it.
+            if( fileExists("ionScores.debug") ) {
+                    debug_ionScores.open("ionScores.debug", ios::out | ios::app);
+            }
+            else { // create file
+                debug_ionScores.open("ionScores.debug", ios::out);
+                debug_ionScores << "specId" << "\t"
+                                << "ionSeq" << "\t"
+                                << "mz" << "\t"
+                                << "intensity" << "\t"
+                                << "mzDist" << "\t"
+                                << "log_dist_M\t"
+                                << "log_dist_U\t"
+                                << "Dscore\t"
+                                << "log_ints_M" << "\t"
+                                << "log_ints_U" << "\t"
+                                << "log_dist_M" << "\t"
+                                << "log_dist_U" << "\t"
+                                << "Iscore" << "\t"
+                                << "Dscore" << "\t"
+                                << "score\n";
+            }
 	}
 
 
@@ -1033,6 +1155,8 @@ double MSProductClass::calcSpectrumScore_HCD(map<double, peakStruct> *Mpeaks) {
 			log_dist_U = 0; // log of Uniform distribution between -1 to 1 is zero
 
 			Dscore = log_dist_M - log_dist_U;
+			// @@
+           cout << specId << "\t" << ionSeq << "\t" << mzDist << "\t" << log_dist_M << "\t" << Dscore << endl;
 
 
 			// scoring with both intensity and m/z distances equally weighted
@@ -1052,21 +1176,21 @@ double MSProductClass::calcSpectrumScore_HCD(map<double, peakStruct> *Mpeaks) {
 			/***************************************************/
 			if(g_DEBUG_MODE == 2) {
 				debug_ionScores << specId << "\t"
-								<< ionSeq << "\t"
-								<< mz << "\t"
-								<< intensity << "\t"
-								<< mzDist << "\t"
-								<< log_dist_M << "\t"
-								<< log_dist_U << "\t"
-								<< Dscore << "\t"
-								<< log_int_M << "\t"
-								<< log_int_U <<  "\t"
-								<< log_dist_M << "\t"
-								<< log_dist_U << "\t"
-								<< Iscore << "\t"
-								<< Dscore << "\t"
-								<< x << endl; // score for this ion
-			}
+                                                << ionSeq << "\t"
+                                                << mz << "\t"
+                                                << intensity << "\t"
+                                                << mzDist << "\t"
+                                                << log_dist_M << "\t"
+                                                << log_dist_U << "\t"
+                                                << Dscore << "\t"
+                                                << log_int_M << "\t"
+                                                << log_int_U <<  "\t"
+                                                << log_dist_M << "\t"
+                                                << log_dist_U << "\t"
+                                                << Iscore << "\t"
+                                                << Dscore << "\t"
+                                                << x << endl; // score for this ion
+			} 
 		}
 	}
 

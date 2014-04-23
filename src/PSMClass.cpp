@@ -65,23 +65,23 @@ PSMClass::PSMClass(matchDataStruct *ptr) {
 
 	if( !ptr->mods.empty() ) { // this sequence contains at least 1 modification
 
-		for(mod_pos = ptr->mods.begin(); mod_pos != ptr->mods.end(); mod_pos++) {
+            for(mod_pos = ptr->mods.begin(); mod_pos != ptr->mods.end(); mod_pos++) {
 
-			idx = mod_pos->first; // position of the modification in peptide string
-			curModMass = round_dbl( mod_pos->second, 2 );
+                idx = mod_pos->first; // position of the modification in peptide string
+                curModMass = round_dbl( mod_pos->second, 2 );
 
-			if(idx != -1) {
-				AAchar = tolower( ptr->peptide.at(idx) ); // residue that is reportedly modified
-				modAAmap_iter = modAAmap.find(AAchar);
+                if(idx != -1) {
+                    AAchar = tolower( ptr->peptide.at(idx) ); // residue that is reportedly modified
+                    modAAmap_iter = modAAmap.find(AAchar);
 
-				if(modAAmap_iter != modAAmap.end()) { // you found the modification
-					modPeptide[ idx ] = AAchar;
-				}
-			}
-			else { // n-terminal modification found
-				nterm_mass = curModMass;
-			}
-		}
+                    if(modAAmap_iter != modAAmap.end()) { // you found the modification
+                        modPeptide[ idx ] = AAchar;
+                    }
+                }
+                else { // n-terminal modification found
+                    nterm_mass = curModMass;
+                }
+            }
 	}
 
 
@@ -102,6 +102,14 @@ PSMClass::PSMClass(matchDataStruct *ptr) {
 	// and at least one of them is annotated as being phosphorylated.
 	is_valid_phosphoPSM = false;
 
+        
+        // if any residue is NOT a valid AA drop this PSM
+        size_t found = ptr->peptide.find_first_of("BJOUXZbjouxz");
+        if(found != string::npos) {
+            phosphoCtr = 0;
+            STYCtr = 0;
+        }
+        
 
 	if( (phosphoCtr > 0) && (STYCtr > 0) ) { // this is a keeper
 		specId = ptr->specId;
@@ -347,8 +355,9 @@ void PSMClass::reduceNeutralLossPeak() {
 	for(curPeak = raw_spectrum.begin(); curPeak != raw_spectrum.end(); curPeak++) {
 		mz = curPeak->first;
 		intensity = curPeak->second.at(0); // raw intensities
-
-		E = runif() * 1/10000; // random noise to make unique peak intensities.
+                
+                E = 0;
+//		E = runif() * 1/10000; // random noise to make unique peak intensities.
 		tmpSpectrum[ mz ] = intensity + E;
 	}
 
@@ -401,32 +410,32 @@ void PSMClass::reduceNeutralLossPeak() {
 
 
 
-// Function identifies the threshold for noisy peaks in the spectrum
-void PSMClass::identifyNoisyPeaks() {
-	list<double> *I_list = NULL;
-	map<double, vector<double> >::iterator curPeak;
-	int N = 0;
-
-	peakType = 2; // median normalized
-
-	N = (signed) raw_spectrum.size();
-
-	I_list = new list<double>(0,N);
-
-	for(curPeak = raw_spectrum.begin(); curPeak != raw_spectrum.end(); curPeak++) {
-		I_list->push_back(curPeak->second.at(peakType));
-	}
-
-	double mu = getMean(I_list);
-	double sigma2 = getVar(I_list);
-	double sigma = sqrt(sigma2);
-
-	delete(I_list); I_list = NULL;
-
-	// log-scaled QN intensity values that are 3 standard deviations from mean intensity
-	// will be considered as noise
-	min_intensity = mu - ( 3.0 * sigma );
-}
+//// Function identifies the threshold for noisy peaks in the spectrum
+//void PSMClass::identifyNoisyPeaks() {
+//	list<double> *I_list = NULL;
+//	map<double, vector<double> >::iterator curPeak;
+//	int N = 0;
+//
+//	peakType = 2; // median normalized
+//
+//	N = (signed) raw_spectrum.size();
+//
+//	I_list = new list<double>(0,N);
+//
+//	for(curPeak = raw_spectrum.begin(); curPeak != raw_spectrum.end(); curPeak++) {
+//		I_list->push_back(curPeak->second.at(peakType));
+//	}
+//
+//	double mu = getMean(I_list);
+//	double sigma2 = getVar(I_list);
+//	double sigma = sqrt(sigma2);
+//
+//	delete(I_list); I_list = NULL;
+//
+//	// log-scaled QN intensity values that are 3 standard deviations from mean intensity
+//	// will be considered as noise
+//	min_intensity = mu - ( 3.0 * sigma );
+//}
 
 
 
@@ -584,7 +593,7 @@ void PSMClass::writeSpectrumToDisk() {
 
 			if(g_WRITE_TOP_TWO) out << iter << "\t";
 
-			out << mz << "\t" << intensity; // default output
+//			out << mz << "\t" << intensity; // default output
 
 			matchIter = ptr->matched_ions.find(mz);
 			if(matchIter != ptr->matched_ions.end()) {
@@ -597,14 +606,14 @@ void PSMClass::writeSpectrumToDisk() {
 				found = ionSeq.find(":") + 1;
 				ss = "";
 				ss = ionSeq.substr(found);
-
+                                out << mz << "\t" << intensity; // default output
 				out << "\t" << ionSeq << "\t"
 					<< fabs(dist) << "\t"
 					<< ptr->IscoreMap[ ionSeq ] << "\t"
 					<< ptr->DscoreMap[ ionSeq ] << "\t"
 					<< ptr->FinalScoreMap[ ionSeq ] << "\t";
 			}
-			else out << "\t\t\t\t\t"; // not technically necessary but makes for easier parsing
+//			else out << "\t\t\t\t\t"; // not technically necessary but makes for easier parsing
 
 			out << endl;
 		}
@@ -635,6 +644,8 @@ void PSMClass::generatePermutations() {
 	 */
 	set< vector<int> >::iterator s_iter;
 
+        phosphoVersionSet.clear();
+        
 	string *curPepVersion = NULL;
 	vector< int > *curBitMap = NULL;
 
@@ -762,27 +773,28 @@ void PSMClass::getMinDistance_unmatched(double mz, double intensity) {
 	multimap<double, double> distMultiMap;
 	multimap<double, double>::iterator mm;
 
-	list<double>::iterator theoPeak;
-	for(theoPeak = all_theoPeaks.begin(); theoPeak != all_theoPeaks.end(); theoPeak++) {
-		minDist = *theoPeak - mz;
-		if( dbl_isnan(minDist) ) minDist = TINY_NUM;
-		absDist = fabs( minDist );
-
-		distance_list.push_back( absDist );
-		distMultiMap.insert( pair<double, double>(absDist, minDist) );
-	}
-
-
-//	map<double, peakStruct>::iterator matchedPeak;
-//	for(matchedPeak = matchedPeakMap.begin(); matchedPeak != matchedPeakMap.end(); matchedPeak++) {
-//		minDist = matchedPeak->first - mz;
+//	list<double>::iterator theoPeak;
+//	for(theoPeak = all_theoPeaks.begin(); theoPeak != all_theoPeaks.end(); theoPeak++) {
+//		minDist = *theoPeak - mz;
 //		if( dbl_isnan(minDist) ) minDist = TINY_NUM;
 //		absDist = fabs( minDist );
 //
 //		distance_list.push_back( absDist );
-//		distMultiMap.insert(pair<double, double>(absDist, minDist));
+//		distMultiMap.insert( pair<double, double>(absDist, minDist) );
 //	}
 
+
+	map<double, peakStruct>::iterator matchedPeak;
+	for(matchedPeak = matchedPeakMap.begin(); matchedPeak != matchedPeakMap.end(); matchedPeak++) {
+		minDist = matchedPeak->first - mz;
+		if( dbl_isnan(minDist) ) minDist = TINY_NUM;
+		absDist = fabs( minDist );
+
+		distance_list.push_back( absDist );
+		distMultiMap.insert(pair<double, double>(absDist, minDist));
+	}
+
+        
 	// From here down, the function picks the minimum distance of this
 	// unmatched peak to the nearest matched peak for this permutation
 
@@ -844,6 +856,8 @@ void PSMClass::calcScore() {
 		if(iter == 0) curSetPtr = &phosphoVersionSet;
 		else curSetPtr = &decoySet;
 
+                if(curSetPtr->size() == 0) break; // this PSM has now decoys
+                
 		// now score the data pointed to by curSetPtr
 		for(curPermutation = curSetPtr->begin(); curPermutation != curSetPtr->end(); curPermutation++) {
 
@@ -917,48 +931,55 @@ void PSMClass::pickScores(deque<scoreStruct> &v) {
 	double deltaScore = 0;
 	string seq1, seq2;
 	string seq;
-
-
+        
 	scoreList.clear();
 	for(curScore = v.begin(); curScore != v.end(); curScore++) {
-		score = curScore->score;
-		seq   = curScore->seq;
+            score = curScore->score;
+            seq   = curScore->seq;
 
-		if(g_DEBUG_MODE == 1) {
-			cout << endl
-				 << specId << "\t"
-				 << seq << "\t(" << score << ")\t"
-				 << isDecoyPep(&seq);
-		}
+            if(g_DEBUG_MODE == 1) {
+                cout << specId << "\t" 
+                     << origModPeptide << "\t"
+                     << seq << "\t"
+                     << isDecoyPep(&seq) << "\t"
+                     << score << endl;
+                        
+//                cout << endl
+//                    << specId << "\t"
+//                    << seq << "\t(" << score << ")\t"
+//                    << isDecoyPep(&seq);
+            }
 
-		scoreList.push_back(score);
-		ssObjMap[ seq ] = *curScore;
-		seq2scoreMap[ seq ] = score;
+            scoreList.push_back(score);
+            ssObjMap[ seq ] = *curScore;
+            seq2scoreMap[ seq ] = score;
 	}
 
-	if(g_DEBUG_MODE == 1) cout << endl;
+//	if(g_DEBUG_MODE == 1) cout << endl;
 
 
 
 	// Special case for handling unambiguous peptides
 	if(is_unambiguous) {
-		for(ss = ssObjMap.begin(); ss != ssObjMap.end(); ss++) {
-			seq = ss->first;
-			if( !isDecoyPep(&seq) ) {
-				bestScore_final = ss->second;
-				nextBestScore_final = ss->second;
-				nextBestScore_final.score = 0; // this guarantees that delta score will be large
-				deltaScore = bestScore_final.score - nextBestScore_final.score;
+            for(ss = ssObjMap.begin(); ss != ssObjMap.end(); ss++) {
+                seq = ss->first;
+                if( !isDecoyPep(&seq) ) {
+                    bestScore_final = ss->second;
+                    nextBestScore_final = ss->second;
+                    nextBestScore_final.score = 0; // this guarantees that delta score will be large
+                    deltaScore = bestScore_final.score - nextBestScore_final.score;
 
-				if(g_DEBUG_MODE == 1) {
-					cout << specId << "\t  "
-						 << bestScore_final.seq << "  (" << bestScore_final.score << ")\t"
-						 << nextBestScore_final.seq << "  (" << nextBestScore_final.score << ")\t"
-						 << "delta = " << deltaScore << endl;
-				}
-				return;
-			}
-		}
+//                    if(g_DEBUG_MODE == 1) {
+//                        
+//                        
+//                        cout << specId << "\t  "
+//                            << bestScore_final.seq << "  (" << bestScore_final.score << ")\t"
+//                            << nextBestScore_final.seq << "  (" << nextBestScore_final.score << ")\t"
+//                            << "delta = " << deltaScore << endl;
+//                    }
+                    return;
+                }
+            }
 	}
 
 
@@ -972,29 +993,29 @@ void PSMClass::pickScores(deque<scoreStruct> &v) {
 	// find a sequence for score1
 	seq1.clear();
 	for(md = seq2scoreMap.begin(); md != seq2scoreMap.end(); md++) {
-		seq = md->first;
-		score = md->second;
+            seq = md->first;
+            score = md->second;
 
-		if(score == score1) { // found a permutation with the top score
-			seq1 = seq;
-			seq2scoreMap.erase(seq); // remove this permutation from the map so it's not "picked up" again
-		}
+            if(score == score1) { // found a permutation with the top score
+                    seq1 = seq;
+                    seq2scoreMap.erase(seq); // remove this permutation from the map so it's not "picked up" again
+            }
 
-		if( !seq1.empty() ) break; // leave loop once seq1 has been assigned a sequence
+            if( !seq1.empty() ) break; // leave loop once seq1 has been assigned a sequence
 	}
 
 
 	// find a sequence for score2
 	seq2.clear();
 	for(md = seq2scoreMap.begin(); md != seq2scoreMap.end(); md++) {
-		seq = md->first;
-		score = md->second;
+            seq = md->first;
+            score = md->second;
 
-		if(score == score2) { // found a permutation with the 2nd best score
-			seq2 = seq;
-		}
+            if(score == score2) { // found a permutation with the 2nd best score
+              seq2 = seq;
+            }
 
-		if( !seq2.empty() ) break; // leave loop once seq2 has been assigned a sequence
+            if( !seq2.empty() ) break; // leave loop once seq2 has been assigned a sequence
 	}
 
 
@@ -1002,22 +1023,21 @@ void PSMClass::pickScores(deque<scoreStruct> &v) {
 	nextBestScore_final = ssObjMap[ seq2 ];
 	deltaScore = bestScore_final.score - nextBestScore_final.score;
 
-	if(g_DEBUG_MODE == 1) {
-		cout << specId << "\t  "
-			 << bestScore_final.seq << "  (" << bestScore_final.score << ")\t"
-			 << nextBestScore_final.seq << "  (" << nextBestScore_final.score << ")\t"
-			 << "delta = " << deltaScore << endl;
-	}
+//	if(g_DEBUG_MODE == 1) {
+//            cout << specId << "\t  "
+//                << bestScore_final.seq << "  (" << bestScore_final.score << ")\t"
+//                << nextBestScore_final.seq << "  (" << nextBestScore_final.score << ")\t"
+//                << "delta = " << deltaScore << endl;
+//	}
 
 }
 
 
 
 
-
 // After the top 2 predictions for this PSM have been selected based upon their
 // log-likelihood scores, this function records the delta score and the
-// spectral features of each preduction for output (should they be needed.
+// spectral features of each prediction for output (should they be needed).
 void PSMClass::processTopHits() {
 
 	MSProductClass *bestMatch = NULL;
@@ -1096,22 +1116,22 @@ void PSMClass::processTopHits() {
 // Function generates all possible decoy-phospho peptide permutations
 // for the sequence of the current PSM.
 void PSMClass::genDecoys() {
-	string seq = upperCaseSTY( origModPeptide );
+    string seq = upperCaseSTY( origModPeptide );
+    
+    set<string> *localDecoySet = NULL;
+    set<string>::iterator s;
 
-	set<string> *localDecoySet = NULL;
-	set<string>::iterator s;
+    localDecoySet = new set<string>();
 
-	localDecoySet = new set<string>();
+    while( (signed)localDecoySet->size() < (int)numDecoyPermutations ) {
+        localDecoySet->insert( genRandDecoyPeptide(seq, numPhosphoSites) );
+    }
 
-	while( (signed)localDecoySet->size() < (int)numDecoyPermutations ) {
-		localDecoySet->insert( genRandDecoyPeptide(seq, numPhosphoSites) );
-	}
+    for(s = localDecoySet->begin(); s != localDecoySet->end(); s++) {
+        decoySet.insert(*s);
+    }
 
-	for(s = localDecoySet->begin(); s != localDecoySet->end(); s++) {
-		decoySet.insert(*s);
-	}
-
-	delete(localDecoySet); localDecoySet = NULL;
+    delete(localDecoySet); localDecoySet = NULL;
 }
 
 
@@ -1636,7 +1656,9 @@ void PSMClass::recordBestSpectrumScores(int J) {
 			 * DISTANCE
 			 */
 			log_dist_M = log_laplaceProb(muM_d, varM_d, mzDist);
-			log_dist_U = log_uniformProb(-mz_err, mz_err);
+			//log_dist_U = log_uniformProb(-mz_err, mz_err);
+                        
+                        log_dist_U = 0;
 			Dscore = log_dist_M - log_dist_U;
 			if(dbl_isnan(Dscore) || isInfinite(Dscore) ) Dscore = 0;
 			ptr->DscoreMap[ ionSeq ] = Dscore;
@@ -1728,7 +1750,7 @@ list<double>* PSMClass::getParamList(char matchType, char ionType, char dataType
 void PSMClass::threaded_scorePSM() {
 	setSpectrumPtr("median");
 	generatePermutations();
-	if(g_randDecoyAA)  genDecoys();
+	if( g_randDecoyAA && (numDecoyPermutations > 0) ) genDecoys();
 	calcScore();
 }
 
@@ -1747,15 +1769,11 @@ void PSMClass::calcNumDecoyPermutations() {
 	// find out how many candidate residues you have for making decoys
 	for(int i = 0; i < seqLen; i++) {
 		c = seq.at(i);
-		if( (c != 'S') && (c != 'T') && (c != 'Y') && (c != 'X') && ( !islower(c) ) ) N++;
+		if( (c != 'S') && (c != 'T') && (c != 'Y') && ( !islower(c) ) ) N++;
 	}
 
-	if( N >= numPotentialSites ) { // you have enough non-STY residues to make a decoy peptide
-		numDecoyPermutations = combinatorial( (double)N, (double)numPhosphoSites );
-	}
+	if( N > 0 ) numDecoyPermutations = combinatorial( (double)N, (double)numPhosphoSites );
 	else numDecoyPermutations = 0;
-
-
 }
 
 
@@ -1871,56 +1889,4 @@ void PSMClass::randomizeSeq() {
 	peptide = uc(newPep);
 	is_randomized_seq = true;
 }
-
-
-// Perform deisotoping of spectrum
-//void PSMClass::deisotopeSpectrum() {
-//	map<double, double> peakClass; // k = an observed peak, v = it's monoisotopic parent (if any)
-//	map<double, vector<double> >::iterator curPeak;
-//	deque<double> mzValues;
-//	double curMZ, obs_mz, delta, theo_mz;
-//	const double DA_ERR = 0.01; // about 10ppm
-//	int N = 0;
-//
-//	for(curPeak = raw_spectrum.begin(); curPeak != raw_spectrum.end(); curPeak++) {
-//		curMZ = curPeak->first;
-//		mzValues.push_back(curMZ);
-//		peakClass[ curMZ ] = 0; // a zero value here means the peak is not assigned to a monoisotopic parent
-//	}
-//
-//	N = (signed) mzValues.size();
-//	sort( mzValues.begin(), mzValues.end() ); // sort m/z values from low to high
-//
-//	for(double z = 1; z < 3; z++) { // assume isotopic peaks up to charge states of 2;
-//
-//		for(int i = 0; i < N; i++) {
-//			curMZ = mzValues.at(i);
-//
-//			for(double j = 1; j < 4; j++) { // up to 3 isotopic peak
-//				theo_mz = curMZ + ((1.0/z) * j); // current theoretical isotopic peak for 'curMZ'
-//
-//				for(int k = (i+1); k < N; k++) {
-//					obs_mz = mzValues.at(k);
-//					delta = fabs(obs_mz - theo_mz);
-//
-//					if(delta < DA_ERR) peakClass[ obs_mz ] = curMZ;
-//					else if(obs_mz > theo_mz) break;
-//				}
-//			}
-//		}
-//	}
-//
-//	/*
-//	 * At this point, all peaks have been classified. Peaks where the map value
-//	 * is zero in peakClass will be retained and all others removed from spectrum.
-//	 */
-//	for(int i = 0; i < N; i++) {
-//		curMZ = mzValues.at(i);
-//		int pClass = peakClass[ curMZ ];
-//		if(pClass != 0) {
-//			curPeak = raw_spectrum.find(curMZ);
-//			raw_spectrum.erase(curPeak);
-//		}
-//	}
-//}
 

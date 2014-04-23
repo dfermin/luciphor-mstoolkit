@@ -99,11 +99,13 @@ void print_usage() {
 		 << "   -w <# greater than 0>     The MS2 fragment ion tolerance in Daltons (default is " << g_MZ_ERR << " Da.)\n"
 
 		 << "\nOptional parameters\n"
-		 << "   -x <0,1,2,3>              Peptide selection method.\n"
+		 << "   -x <0,1,2,3,4>            Peptide selection method.\n"
 		 << "                             0 = Peptide Prophet probability (default)\n"
 		 << "                             1 = Sequest/Comet Xcorr\n"
-		 << "                             2 = -log(X!Tandem Evalue)\n"
-		 << "                             3 = Mascot IonScore\n\n"
+		 << "                             2 = -log(X!Tandem/Comet Evalue)\n"
+		 << "                             3 = Mascot IonScore\n"
+                 << "                             4 = X!Tandem Hyperscore\n\n"
+                
 		 << "   -p <float>                Minimum score a PSM needs in order to be considered for scoring\n"
 		 << "                             Default is " << g_prob_threshold << " for -x 0\n"
 		 << "   -m <float>                Minimum score a PSM needs in order to be used for model parameter estimation\n"
@@ -367,7 +369,6 @@ void parse_command_line_args(int argc, char *argv[]) {
 		if(!userGiven) g_MZ_ERR = 0.1;
 
 		g_DECOY_MZ_ERR = g_MZ_ERR;
-		//g_DECOY_MZ_ERR = 4 * g_MZ_ERR; // decoys need a bigger error window
 
 	}
 
@@ -398,6 +399,7 @@ void parse_command_line_args(int argc, char *argv[]) {
 	if(g_scoringMethod == 1) cerr << "Sequest/Comet Xcorr" << endl;
 	if(g_scoringMethod == 2) cerr << "-log(X!Tandem Evalue)" << endl;
 	if(g_scoringMethod == 3) cerr << "Mascot IonScore" << endl;
+        if(g_scoringMethod == 4) cerr << "X!Tandem Hyperscore" << endl;
 
 	cerr << "Modeling threshold >= " << g_model_prob << endl
 		 << "Scoring threshold  >= " << g_prob_threshold << endl
@@ -498,6 +500,8 @@ string getExecutionParameters() {
 	if(g_scoringMethod == 1) ret +="Scoring method:\tSequest/Comet Xcorr\n";
 	if(g_scoringMethod == 2) ret +="Scoring method:\t-log(X!Tandem Evalue)\n";
 	if(g_scoringMethod == 3) ret +="Scoring method:\tMascot IonScore\n";
+        if(g_scoringMethod == 4) ret +="Scoring method:\tX!Tandem Hyperscore\n";
+        
 
 	ret += "Modeling threshold:\t" + dbl2string(g_model_prob) + "\n"
 		+ "Scoring threshold:\t" + dbl2string(g_prob_threshold) + "\n"
@@ -770,46 +774,43 @@ string genRandDecoyPeptide(string srcSeq, int numSites) {
 	d = new deque<int>();
 
 	for(int i = 0; i < seqLen; i++) {
-		c = seq.at(i);
-		if( (c != 'S') && (c != 'T') && (c != 'Y') && (c != 'X') && (!islower(c)) ) {
-		//if( (c != 'S') && (c != 'T') && (c != 'Y') && (c != 'X') ) {
-
-			// if you got this far, that means the character at this index
-			// is okay to use for making a decoy phospho-peptide
-			d->push_back(i);
-		}
+            c = seq.at(i);
+            if( (c != 'S') && (c != 'T') && (c != 'Y') && (!islower(c)) ) {
+                // if you got this far, that means the character at this index
+                // is okay to use for making a decoy phospho-peptide
+                d->push_back(i);
+            }
 	}
 	
 	N = (signed) d->size(); // find out how many candidate residues you have
 
 	if(N < numSites) {
-		// There are not enough candidate residues in this peptide to generate
-		// a decoy version of it.
-		ret = "no_valid_decoys";
+            // There are not enough candidate residues in this peptide to generate
+            // a decoy version of it.
+            ret = "no_valid_decoys";
 	}
 	else {
-		for(int i = 0; i < 3; i++) random_shuffle(d->begin(), d->end()); // randomly permute the candidate residues
+            random_shuffle(d->begin(), d->end()); // randomly permute the candidate residues
 
-		for(int j = 0; j < numSites; j++) {
-			int p = d->at(j);
-			//c = toupper( strAry->at(p) ); // get the character at this coordinate
-			c = strAry->at(p); // get the character at this coordinate
+            for(int j = 0; j < numSites; j++) {
+                int p = d->at(j);
+                c = strAry->at(p); // get the character at this coordinate
 
-			decoyIter = decoyAA.find(c);
+                decoyIter = decoyAA.find(c);
 
-			if(decoyIter != decoyAA.end()) strAry->at(p) = decoyIter->second;
-			else {
-				cerr << "\nERROR!: Unable to generate a decoy sequence for '" << srcSeq << "'\n";
-				cerr << "Unable to continue. Exiting now.\n\n";
-				exit(0);
-			}
-		}
+                if(decoyIter != decoyAA.end()) strAry->at(p) = decoyIter->second;
+                else {
+                    cerr << "\nERROR!: Unable to generate a decoy sequence for '" << srcSeq << "'\n";
+                    cerr << "numSites req: " << numSites << ", j = " << j << ", p = " << p << ", c = " << c << endl;
+                    cerr << "Unable to continue. Exiting now.\n\n";
+                    exit(0);
+                }
+            }
 
-		ret = ""; // now reassemble the string from strAry
-		for(int k = 0; k < seqLen; k++) ret += strAry->at(k);
-
+            ret = ""; // now reassemble the string from strAry
+            for(int k = 0; k < seqLen; k++) ret += strAry->at(k);
 	}
-
+        
 	delete(d); d = NULL;
 	delete(strAry); strAry = NULL;
 
@@ -820,21 +821,21 @@ string genRandDecoyPeptide(string srcSeq, int numSites) {
 
 // Function returns true if the given peptide contains a decoy modification
 bool isDecoyPep(string *srcPtr) {
-	bool ret = false;
-	int N = srcPtr->length();
-	char curChar;
-	size_t found;
+    bool ret = false;
+    int N = srcPtr->length();
+    char curChar;
+    size_t found;
 
-	for(int i = 0; i < N; i++) {
-		curChar = srcPtr->at(i);
+    for(int i = 0; i < N; i++) {
+        curChar = srcPtr->at(i);
 
-		if( !isalpha(curChar) ) {
-			ret = true;
-			break;
-		}
-	}
+        if( !isalpha(curChar) ) {
+            ret = true;
+            break;
+        }
+    }
 
-	return ret;
+    return ret;
 }
 
 

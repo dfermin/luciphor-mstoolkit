@@ -13,8 +13,8 @@
 #include <string>
 #include <fstream>
 #include <iostream>
-#include "structs.hpp";
-#include "globals.hpp";
+#include "structs.hpp"
+#include "globals.hpp"
 
 using namespace std;
 

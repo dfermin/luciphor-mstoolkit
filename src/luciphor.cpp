@@ -3,7 +3,7 @@
 // Author      : Damian Fermin, Ph.D
 // Version     :
 // Copyright   : 2011
-// Description : Hello World in C++, Ansi-style
+// Description : Luciphor Main Function in C++, Ansi-style
 //============================================================================
 
 #include <iostream>
