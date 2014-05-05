@@ -12,6 +12,7 @@
 #include <string>
 #include <cmath>
 #include <list>
+#include <fstream>
 
 #include "globals.hpp"
 #include "structs.hpp"
@@ -569,6 +570,9 @@ void FLRClass::assignFDRvalues() {
 	flrStruct *F = NULL;
 	string curID;
 	double local_flr = 0;
+        
+        // holds all flr results
+        deque<flrStruct> allEstimates;
 
 	real_iter = realDeq.begin();
 	globalFDR_iter = globalFDR.begin();
@@ -582,7 +586,6 @@ void FLRClass::assignFDRvalues() {
 		local_flr = *localFDR_iter;
 		if(local_flr > 1) local_flr = 1;
 
-
 		F->globalFLR = *globalFDR_iter;  // global FDR
 		F->localFLR = local_flr;        // local FDR
 		F->prob = 1.0 - local_flr;       // probability version of luciphor score
@@ -590,12 +593,99 @@ void FLRClass::assignFDRvalues() {
 		curID = F->specId;
 		retMap.insert( pair<string, flrStruct >(curID, *F) );
 
+                F->deltaScore = real_iter->deltaScore;
+                F->isDecoy = false;
+                
+                allEstimates.push_back(*F); // for writing FLR estimates
+                
 		delete(F);
 
 		globalFDR_iter++;
 		localFDR_iter++;
 		real_iter++;
 	}
+        
+        writeFLRestimates(allEstimates);
+}
+
+
+
+// Function writes the computed FLR estimates to disk
+void FLRClass::writeFLRestimates(deque<flrStruct> &allEstimates) {
+   
+        map<double, double> flrMapG, flrMapL; // k = delta score, v = lowest FLR associated with it
+        list<double> allScores, dsList;
+        deque<flrStruct>::iterator deq_iter;
+        ofstream fdrF;
+        
+        
+        
+        // First get all of the unique FLR values observed
+        for(deq_iter = allEstimates.begin(); deq_iter != allEstimates.end(); deq_iter++) {        
+            flrMapG[ deq_iter->deltaScore ] = 1;
+            flrMapL[ deq_iter->deltaScore ]  = 1;
+            dsList.push_back( deq_iter->deltaScore ); // record every single delta score observed
+        }
+        
+        // Now find the smallest delta score that has the observed FLR value
+        // GLOBAL FLR loop
+        for(map<double, double>::iterator m = flrMapG.begin(); m != flrMapG.end(); m++) {
+            double curDeltaScore = m->first;
+            
+            // find the smallest globalFLR with this deltaScore value
+            allScores.clear();
+            for(deq_iter = allEstimates.begin(); deq_iter != allEstimates.end(); deq_iter++) {
+                if(deq_iter->deltaScore == curDeltaScore) allScores.push_back(deq_iter->globalFLR);  
+            }
+            allScores.sort();
+            m->second = allScores.front();
+        }
+        
+        
+        // Now find the largest delta score that has the observed FLR value
+        // LOCAL FLR loop
+        for(map<double, double>::iterator m = flrMapL.begin(); m != flrMapL.end(); m++) {
+            double curDeltaScore = m->first;
+            
+            // find the smallest delta score with this globalFLR value
+            allScores.clear();
+            for(deq_iter = allEstimates.begin(); deq_iter != allEstimates.end(); deq_iter++) {
+                if(deq_iter->deltaScore <= curDeltaScore) allScores.push_back(deq_iter->localFLR);  
+            }
+            allScores.sort();
+            m->second = allScores.front();
+        }
+        allScores.clear();
+        
+        
+        // write flr estimates to disk
+        size_t found = g_outputName.find_last_of('.');
+        string fdr_out = "FLR_estimates.tsv";
+        if(found != string::npos) {
+            fdr_out = g_outputName.substr(0,found) + "_FLR_estimates.tsv";
+        }
+        
+        fdrF.open(fdr_out.c_str(), ios::out);
+        if(!fdrF.is_open()) {
+            cerr << "\nERROR! Unable to create 'globalFDR_estimates.tsv' file\n";
+            exit(0);
+        }
+        
+        fdrF << "deltaScore\tglobalFLR\tlocalFLR\n";
+        dsList.sort(); // sort from low to high
+        dsList.reverse(); // sorted from high to low
+        map<double, double>::iterator G, L;
+        
+        for(list<double>::iterator ds = dsList.begin(); ds != dsList.end(); ds++) {
+            G = flrMapG.find(*ds);
+            L = flrMapL.find(*ds);
+            
+            fdrF << *ds << "\t" << G->second << "\t" << L->second << endl;
+        }
+        fdrF.close();
+        
+        cerr << "\nFalse Localization Rate (FLR) estimates have been written to: " 
+             << fdr_out << endl << endl;
 }
 
 

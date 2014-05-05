@@ -60,6 +60,7 @@ public:
 	void setMinorMaps();
 	void performMinorization();
 	void assignFDRvalues();
+        void writeFLRestimates(deque<flrStruct> &allEstimates);
 
 };
 
